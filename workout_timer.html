@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        .exercise-name {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        
+        .timer {
+            font-size: 8em;
+            font-weight: bold;
+            margin: 40px 0;
+            color: #4CAF50;
+        }
+        
+        .timer.break {
+            color: #FFC107;
+        }
+        
+        .progress {
+            font-size: 1.2em;
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            margin-top: 40px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .break-text {
+            color: #FFC107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress"></div>
+        <div class="exercise-name" id="exerciseName"></div>
+        <div class="timer" id="timer"></div>
+        <div class="next-exercise" id="nextExercise" style="font-size: 1.2em; color: #666; margin-top: 20px; min-height: 30px;"></div>
+        <div class="controls">
+            <button id="startBtn" onclick="startWorkout()">Start Workout</button>
+            <button id="pauseBtn" onclick="togglePause()" disabled>Pause</button>
+            <button id="nextBtn" onclick="skipToNext()" disabled>Next</button>
+            <button onclick="resetWorkout()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        const exercises = [
+            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "30 seconds per leg" },
+            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "Second leg" },
+            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "30 seconds per side" },
+            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "Second side" },
+            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "30 seconds per leg" },
+            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "Second leg" },
+            { name: "Rollovers into V-sits", duration: 35, note: "10 reps" },
+            { name: "Forward and backward fire hydrant circles", duration: 35, note: "10 reps per leg" },
+            { name: "Forward and backward fire hydrant circles", duration: 35, note: "Second leg" },
+            { name: "Groiners", duration: 35, note: "10 reps per leg" },
+            { name: "Groiners", duration: 35, note: "Second leg" },
+            { name: "Frog jumps", duration: 35, note: "10 reps" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 1" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 1" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 2" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 2" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 3" },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 3" }
+        ];
+
+        let currentExerciseIndex = 0;
+        let timeRemaining = 0;
+        let isRunning = false;
+        let isPaused = false;
+        let interval = null;
+        let isBreak = false;
+
+        const timerDisplay = document.getElementById('timer');
+        const exerciseNameDisplay = document.getElementById('exerciseName');
+        const progressDisplay = document.getElementById('progress');
+        const nextExerciseDisplay = document.getElementById('nextExercise');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        function updateDisplay() {
+            if (isBreak) {
+                const nextExercise = exercises[currentExerciseIndex + 1];
+                exerciseNameDisplay.innerHTML = `<span class="break-text">REST</span><br><small style="font-size: 0.4em; color: #888;">Next: ${nextExercise.name}</small>`;
+                timerDisplay.classList.add('break');
+            } else {
+                const exercise = exercises[currentExerciseIndex];
+                exerciseNameDisplay.innerHTML = `${exercise.name}<br><small style="font-size: 0.5em; color: #888;">${exercise.note}</small>`;
+                timerDisplay.classList.remove('break');
+            }
+            
+            timerDisplay.textContent = timeRemaining;
+            progressDisplay.textContent = `Exercise ${currentExerciseIndex + 1} of ${exercises.length}`;
+            
+            // Show next exercise
+            if (!isBreak && currentExerciseIndex < exercises.length - 1) {
+                const nextExercise = exercises[currentExerciseIndex + 1];
+                nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> ${nextExercise.name}`;
+            } else if (!isBreak && currentExerciseIndex === exercises.length - 1) {
+                nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> Workout Complete!`;
+            } else {
+                nextExerciseDisplay.innerHTML = '';
+            }
+        }
+
+        function startExercise() {
+            isBreak = false;
+            timeRemaining = exercises[currentExerciseIndex].duration;
+            updateDisplay();
+        }
+
+        function startBreak() {
+            isBreak = true;
+            timeRemaining = 5;
+            updateDisplay();
+        }
+
+        function tick() {
+            if (isPaused) return;
+            
+            timeRemaining--;
+            updateDisplay();
+
+            if (timeRemaining <= 0) {
+                if (isBreak) {
+                    // Break is over, start next exercise
+                    currentExerciseIndex++;
+                    if (currentExerciseIndex >= exercises.length) {
+                        // Workout complete
+                        finishWorkout();
+                        return;
+                    }
+                    startExercise();
+                } else {
+                    // Exercise is over, start break (unless it's the last exercise)
+                    if (currentExerciseIndex < exercises.length - 1) {
+                        startBreak();
+                    } else {
+                        finishWorkout();
+                    }
+                }
+            }
+        }
+
+        function startWorkout() {
+            if (!isRunning) {
+                isRunning = true;
+                isPaused = false;
+                currentExerciseIndex = 0;
+                startExercise();
+                interval = setInterval(tick, 1000);
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                nextBtn.disabled = false;
+            }
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        function skipToNext() {
+            if (!isRunning) return;
+            
+            // Skip to next exercise or break
+            if (isBreak) {
+                currentExerciseIndex++;
+                if (currentExerciseIndex >= exercises.length) {
+                    finishWorkout();
+                    return;
+                }
+                startExercise();
+            } else {
+                if (currentExerciseIndex < exercises.length - 1) {
+                    startBreak();
+                } else {
+                    finishWorkout();
+                }
+            }
+        }
+
+        function resetWorkout() {
+            clearInterval(interval);
+            isRunning = false;
+            isPaused = false;
+            currentExerciseIndex = 0;
+            timeRemaining = 0;
+            isBreak = false;
+            exerciseNameDisplay.textContent = 'Ready to start?';
+            timerDisplay.textContent = '';
+            timerDisplay.classList.remove('break');
+            progressDisplay.textContent = '';
+            nextExerciseDisplay.textContent = '';
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            nextBtn.disabled = true;
+            pauseBtn.textContent = 'Pause';
+        }
+
+        function finishWorkout() {
+            clearInterval(interval);
+            exerciseNameDisplay.innerHTML = '🎉 Workout Complete! 🎉';
+            timerDisplay.textContent = '';
+            timerDisplay.classList.remove('break');
+            nextExerciseDisplay.textContent = '';
+            isRunning = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            nextBtn.disabled = true;
+        }
+
+        // Initialize
+        resetWorkout();
+    </script>
+</body>
+</html>
