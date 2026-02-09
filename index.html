@@ -82,6 +82,11 @@
 </head>
 <body>
     <div class="container">
+        <div style="margin-bottom: 30px;">
+            <h1 style="font-size: 2em; margin-bottom: 10px;">DeFranco Agile 8 Warmup</h1>
+            <div style="font-size: 1em; color: #888;">carlappen.github.io/defranco-agile-8-timer</div>
+            <div style="font-size: 0.9em; color: #666; margin-top: 5px;">v 1.2</div>
+        </div>
         <div class="progress" id="progress"></div>
         <div class="exercise-name" id="exerciseName"></div>
         <div class="timer" id="timer"></div>
@@ -96,24 +101,24 @@
 
     <script>
         const exercises = [
-            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "30 seconds per leg" },
-            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "Second leg" },
-            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "30 seconds per side" },
-            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "Second side" },
-            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "30 seconds per leg" },
-            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "Second leg" },
-            { name: "Rollovers into V-sits", duration: 35, note: "10 reps" },
-            { name: "Forward and backward fire hydrant circles", duration: 35, note: "10 reps per leg" },
-            { name: "Forward and backward fire hydrant circles", duration: 35, note: "Second leg" },
-            { name: "Groiners", duration: 35, note: "10 reps per leg" },
-            { name: "Groiners", duration: 35, note: "Second leg" },
-            { name: "Frog jumps", duration: 35, note: "10 reps" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 1" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 1" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 2" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 2" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 3" },
-            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 3" }
+            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "30 seconds per leg", restDuration: 10 },
+            { name: "Foam rolling the IT band (outer thigh)", duration: 30, note: "Second leg", restDuration: 15 },
+            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "30 seconds per side", restDuration: 10 },
+            { name: "Glute/piriformis myofascial release with a tennis ball", duration: 30, note: "Second side", restDuration: 15 },
+            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "30 seconds per leg", restDuration: 10 },
+            { name: "Foam rolling the adductors (inner thigh)", duration: 30, note: "Second leg", restDuration: 15 },
+            { name: "Rollovers into V-sits", duration: 35, note: "10 reps", restDuration: 15 },
+            { name: "Forward and backward fire hydrant circles", duration: 35, note: "10 reps per leg", restDuration: 10 },
+            { name: "Forward and backward fire hydrant circles", duration: 35, note: "Second leg", restDuration: 15 },
+            { name: "Groiners", duration: 35, note: "10 reps per leg", restDuration: 10 },
+            { name: "Groiners", duration: 35, note: "Second leg", restDuration: 15 },
+            { name: "Frog jumps", duration: 35, note: "10 reps", restDuration: 15 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 1", restDuration: 10 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 1", restDuration: 10 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 2", restDuration: 10 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 2", restDuration: 10 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "10 seconds per leg - Round 3", restDuration: 10 },
+            { name: "Kneeling hip flexor stretch", duration: 10, note: "Second leg - Round 3", restDuration: 0 }
         ];
 
         let currentExerciseIndex = 0;
@@ -122,6 +127,7 @@
         let isPaused = false;
         let interval = null;
         let isBreak = false;
+        let isGetReady = false;
 
         const timerDisplay = document.getElementById('timer');
         const exerciseNameDisplay = document.getElementById('exerciseName');
@@ -132,28 +138,33 @@
         const nextBtn = document.getElementById('nextBtn');
 
         function updateDisplay() {
-            if (isBreak) {
+            if (isGetReady) {
+                exerciseNameDisplay.innerHTML = '<span style="color: #4CAF50;">GET READY!</span>';
+                timerDisplay.classList.remove('break');
+                progressDisplay.textContent = 'Starting soon...';
+                nextExerciseDisplay.innerHTML = `<strong>First Exercise:</strong> ${exercises[0].name}`;
+            } else if (isBreak) {
                 const nextExercise = exercises[currentExerciseIndex + 1];
                 exerciseNameDisplay.innerHTML = `<span class="break-text">REST</span><br><small style="font-size: 0.4em; color: #888;">Next: ${nextExercise.name}</small>`;
                 timerDisplay.classList.add('break');
+                progressDisplay.textContent = `Exercise ${currentExerciseIndex + 1} of ${exercises.length}`;
+                nextExerciseDisplay.innerHTML = '';
             } else {
                 const exercise = exercises[currentExerciseIndex];
                 exerciseNameDisplay.innerHTML = `${exercise.name}<br><small style="font-size: 0.5em; color: #888;">${exercise.note}</small>`;
                 timerDisplay.classList.remove('break');
+                progressDisplay.textContent = `Exercise ${currentExerciseIndex + 1} of ${exercises.length}`;
+                
+                // Show next exercise
+                if (currentExerciseIndex < exercises.length - 1) {
+                    const nextExercise = exercises[currentExerciseIndex + 1];
+                    nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> ${nextExercise.name}`;
+                } else {
+                    nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> Workout Complete!`;
+                }
             }
             
             timerDisplay.textContent = timeRemaining;
-            progressDisplay.textContent = `Exercise ${currentExerciseIndex + 1} of ${exercises.length}`;
-            
-            // Show next exercise
-            if (!isBreak && currentExerciseIndex < exercises.length - 1) {
-                const nextExercise = exercises[currentExerciseIndex + 1];
-                nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> ${nextExercise.name}`;
-            } else if (!isBreak && currentExerciseIndex === exercises.length - 1) {
-                nextExerciseDisplay.innerHTML = `<strong>Up Next:</strong> Workout Complete!`;
-            } else {
-                nextExerciseDisplay.innerHTML = '';
-            }
         }
 
         function startExercise() {
@@ -164,7 +175,14 @@
 
         function startBreak() {
             isBreak = true;
-            timeRemaining = 5;
+            timeRemaining = exercises[currentExerciseIndex].restDuration;
+            updateDisplay();
+        }
+
+        function startGetReady() {
+            isGetReady = true;
+            isBreak = false;
+            timeRemaining = 20;
             updateDisplay();
         }
 
@@ -175,7 +193,11 @@
             updateDisplay();
 
             if (timeRemaining <= 0) {
-                if (isBreak) {
+                if (isGetReady) {
+                    // Get ready period is over, start first exercise
+                    isGetReady = false;
+                    startExercise();
+                } else if (isBreak) {
                     // Break is over, start next exercise
                     currentExerciseIndex++;
                     if (currentExerciseIndex >= exercises.length) {
@@ -185,9 +207,13 @@
                     }
                     startExercise();
                 } else {
-                    // Exercise is over, start break (unless it's the last exercise)
-                    if (currentExerciseIndex < exercises.length - 1) {
+                    // Exercise is over, start break (unless it's the last exercise or rest is 0)
+                    if (currentExerciseIndex < exercises.length - 1 && exercises[currentExerciseIndex].restDuration > 0) {
                         startBreak();
+                    } else if (currentExerciseIndex < exercises.length - 1) {
+                        // No rest, go straight to next exercise
+                        currentExerciseIndex++;
+                        startExercise();
                     } else {
                         finishWorkout();
                     }
@@ -200,7 +226,7 @@
                 isRunning = true;
                 isPaused = false;
                 currentExerciseIndex = 0;
-                startExercise();
+                startGetReady();
                 interval = setInterval(tick, 1000);
                 startBtn.disabled = true;
                 pauseBtn.disabled = false;
@@ -217,7 +243,11 @@
             if (!isRunning) return;
             
             // Skip to next exercise or break
-            if (isBreak) {
+            if (isGetReady) {
+                // Skip get ready, go straight to first exercise
+                isGetReady = false;
+                startExercise();
+            } else if (isBreak) {
                 currentExerciseIndex++;
                 if (currentExerciseIndex >= exercises.length) {
                     finishWorkout();
@@ -225,8 +255,11 @@
                 }
                 startExercise();
             } else {
-                if (currentExerciseIndex < exercises.length - 1) {
+                if (currentExerciseIndex < exercises.length - 1 && exercises[currentExerciseIndex].restDuration > 0) {
                     startBreak();
+                } else if (currentExerciseIndex < exercises.length - 1) {
+                    currentExerciseIndex++;
+                    startExercise();
                 } else {
                     finishWorkout();
                 }
@@ -237,6 +270,7 @@
             clearInterval(interval);
             isRunning = false;
             isPaused = false;
+            isGetReady = false;
             currentExerciseIndex = 0;
             timeRemaining = 0;
             isBreak = false;
